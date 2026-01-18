@@ -200,6 +200,7 @@ class BacktestResultCalculator:
             "stockno": stock,
             "entry_date": pos["entry_date"],
             "entry_price": pos["entry_price"],
+            "buy_signal": pos.get("buy_signal"),
             "exit_date": exit_date,
             "exit_price": exit_price,
             "hold_days": hold_days,
@@ -243,6 +244,7 @@ class BacktestResultCalculator:
                     active_positions[stock] = {
                         "entry_date": date,
                         "entry_price": price,
+                        "buy_signal": row.get("buy_signal"),
                         "max_price": price,
                         "max_date": date,
                         "min_price": price,

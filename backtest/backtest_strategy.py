@@ -189,7 +189,15 @@ class BacktestStrategy:
             d += timedelta(days=1)
         return result
 
-    def upgrade_records(self, action: str, stockno: str, ope_date: str, price: float, update_time: str):
+    def upgrade_records(
+        self,
+        action: str,
+        stockno: str,
+        ope_date: str,
+        price: float,
+        update_time: str,
+        buy_signal: Optional[str] = None,
+    ):
         """
         更新交易或持仓记录表。
 
@@ -233,6 +241,7 @@ class BacktestStrategy:
             "current_weight": current_weight,
             "price": price,
             "stockno": stockno,
+            "buy_signal": buy_signal,
             "operation_succ": 1,
             "update_time": update_time,
             "version": f"{self.strategy.__class__.__name__}",
@@ -280,7 +289,18 @@ class BacktestStrategy:
                 trade_date, trade_price = self.data_loader.get_next_trade_day_price(stockno, order["request_date"])
                 if trade_date and pd.to_datetime(trade_date) <= pd.to_datetime(date):
                     # 成交
-                    self.upgrade_records(action, stockno, trade_date, trade_price, order["request_date"])
+                    if action == "SELL":
+                        buy_signal = self.holdings.get(stockno, {}).get("buy_signal")
+                    else:
+                        buy_signal = info.get("buy_signal")
+                    self.upgrade_records(
+                        action,
+                        stockno,
+                        trade_date,
+                        trade_price,
+                        order["request_date"],
+                        buy_signal=buy_signal,
+                    )
                     for table in self.detail_tables: # 存入详细信息
                         extra = order["info"].get(table, {})
                         self.update_detail_record(table,{
@@ -311,7 +331,14 @@ class BacktestStrategy:
                 if stockno not in self.holdings:
                     continue
                 recent_price = self.data_loader.get_recent_price(stockno, date)
-                self.upgrade_records("HOLD", stockno, date, recent_price, date)
+                self.upgrade_records(
+                    "HOLD",
+                    stockno,
+                    date,
+                    recent_price,
+                    date,
+                    buy_signal=self.holdings[stockno].get("buy_signal"),
+                )
 
             # 3. 卖出
             for stockno in self.holdings.keys():
